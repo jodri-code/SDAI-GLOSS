@@ -8,6 +8,7 @@ import com.shifthackz.aisdv1.domain.repository.CoreMlGenerationRepository
 import com.shifthackz.aisdv1.domain.repository.FalAiGenerationRepository
 import com.shifthackz.aisdv1.domain.repository.HordeGenerationRepository
 import com.shifthackz.aisdv1.domain.repository.HuggingFaceGenerationRepository
+import com.shifthackz.aisdv1.domain.repository.LocalDiffusionGenerationRepository
 import com.shifthackz.aisdv1.domain.repository.StabilityAiGenerationRepository
 import com.shifthackz.aisdv1.domain.repository.StableDiffusionGenerationRepository
 import com.shifthackz.aisdv1.domain.repository.SwarmUiGenerationRepository
@@ -76,6 +77,10 @@ internal class ImageToImageUseCaseImpl(
      */
     private val arliAiGenerationRepository: ArliAiGenerationRepository,
     /**
+     * Exposes the `localDiffusionGenerationRepository` value used by local ONNX Img2Img.
+     */
+    private val localDiffusionGenerationRepository: LocalDiffusionGenerationRepository,
+    /**
      * Exposes the `preferenceManager` value used by the SDAI domain layer.
      *
      * @throws IllegalStateException when the delegated operation cannot complete.
@@ -111,6 +116,7 @@ internal class ImageToImageUseCaseImpl(
         ServerSource.HUGGING_FACE -> huggingFaceGenerationRepository.generateFromImage(payload)
         ServerSource.STABILITY_AI -> stabilityAiGenerationRepository.generateFromImage(payload)
         ServerSource.LOCAL_APPLE_CORE_ML -> coreMlGenerationRepository.generateFromImage(payload)
+        ServerSource.LOCAL_MICROSOFT_ONNX -> localDiffusionGenerationRepository.generateFromImage(payload)
         ServerSource.AUTOMATIC1111 -> error("Automatic1111 batch must be generated through generateFromImage(payload).")
         ServerSource.FAL_AI -> error("Fal.ai batch must be generated through generateFromImage(payload).")
         ServerSource.ARLI_AI -> error("ArliAI batch must be generated through generateFromImage(payload).")

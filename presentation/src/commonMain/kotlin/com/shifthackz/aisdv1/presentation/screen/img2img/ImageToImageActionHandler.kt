@@ -4,6 +4,12 @@ import com.shifthackz.aisdv1.core.common.appbuild.BuildInfoProvider
 import com.shifthackz.aisdv1.core.common.appbuild.BuildType
 import com.shifthackz.aisdv1.core.common.schedulers.DispatchersProvider
 import com.shifthackz.aisdv1.core.localization.Localization
+import com.shifthackz.aisdv1.core.model.asUiText
+import com.shifthackz.aisdv1.domain.entity.DownloadState
+import com.shifthackz.aisdv1.domain.entity.LocalDiffusionStatus
+import com.shifthackz.aisdv1.domain.entity.ServerSource
+import com.shifthackz.aisdv1.domain.usecase.generation.DownloadLocalVaeEncoderUseCase
+import com.shifthackz.aisdv1.domain.usecase.generation.IsLocalImageToImageReadyUseCase
 import com.shifthackz.aisdv1.core.validation.dimension.DimensionValidator
 import com.shifthackz.aisdv1.domain.entity.AiGenerationResult
 import com.shifthackz.aisdv1.domain.entity.ImageToImagePayload
@@ -84,6 +90,14 @@ internal class ImageToImageActionHandler(
      * @author Dmitriy Moroz
      */
     private val interruptGenerationUseCase: InterruptGenerationUseCase,
+    /**
+     * Checks whether local Img2Img has the image encoder it needs.
+     */
+    private val isLocalImageToImageReadyUseCase: IsLocalImageToImageReadyUseCase,
+    /**
+     * Downloads the shared image encoder on first local Img2Img use.
+     */
+    private val downloadLocalVaeEncoderUseCase: DownloadLocalVaeEncoderUseCase,
     /**
      * Exposes the `preferenceManager` value used by the SDAI presentation layer.
      *
@@ -213,6 +227,7 @@ internal class ImageToImageActionHandler(
     private var generationJob: Job? = null
 
     private var pendingGenerationState: ImageToImageState? = null
+    private var pendingEncoderState: ImageToImageState? = null
 
     /**
      * Executes the `pickImage` step in the SDAI presentation layer.
@@ -320,12 +335,88 @@ internal class ImageToImageActionHandler(
             return
         }
 
+        if (validatedState.mode == ServerSource.LOCAL_MICROSOFT_ONNX) {
+            ensureVaeEncoderThenGenerate(validatedState)
+            return
+        }
+
+        continueGeneration(validatedState)
+    }
+
+    private fun continueGeneration(validatedState: ImageToImageState) {
         if (validatedState.mode.isLocalGenerationSource()) {
             evaluateBenchmarkGate(validatedState)
             return
         }
 
         startGeneration(validatedState)
+    }
+
+    /**
+     * Local ONNX Img2Img needs a shared image encoder, downloaded once. If it is missing, ask first
+     * and resume the generation automatically when the download finishes.
+     */
+    private fun ensureVaeEncoderThenGenerate(validatedState: ImageToImageState) {
+        launch(dispatchersProvider.io, CoroutineStart.DEFAULT) {
+            val ready = runCatching { isLocalImageToImageReadyUseCase() }
+                .onFailure { if (it is CancellationException) throw it }
+                .getOrDefault(true) // if the check itself fails, let generation report the real error
+            withContext(dispatchersProvider.immediate) {
+                if (ready) {
+                    continueGeneration(validatedState)
+                } else {
+                    pendingEncoderState = validatedState
+                    updateState {
+                        it.copy(screenModal = GenerationModal.EncoderDownload(downloadLocalVaeEncoderUseCase.sizeLabel))
+                    }
+                }
+            }
+        }
+    }
+
+    fun confirmEncoderDownload() {
+        val pending = pendingEncoderState ?: return updateState { it.copy(screenModal = GenerationModal.None) }
+        pendingEncoderState = null
+        val title = Localization.string("encoder_download_progress").asUiText()
+        updateState {
+            it.copy(
+                screenModal = GenerationModal.Generating(
+                    title = title,
+                    canCancel = true,
+                    status = LocalDiffusionStatus(0, 100),
+                ),
+            )
+        }
+        generationJob?.cancel()
+        generationJob = launch(dispatchersProvider.io, CoroutineStart.DEFAULT) {
+            downloadLocalVaeEncoderUseCase().collect { downloadState ->
+                withContext(dispatchersProvider.immediate) {
+                    when (downloadState) {
+                        is DownloadState.Downloading -> updateState {
+                            it.copy(
+                                screenModal = GenerationModal.Generating(
+                                    title = title,
+                                    canCancel = true,
+                                    status = LocalDiffusionStatus(downloadState.percent, 100),
+                                ),
+                            )
+                        }
+                        is DownloadState.Complete -> {
+                            generationJob = null // startGeneration() cancels the previous job; that was this one
+                            updateState { it.copy(screenModal = GenerationModal.None) }
+                            continueGeneration(pending)
+                        }
+                        is DownloadState.Error -> {
+                            onError(downloadState.error)
+                            updateState {
+                                it.copy(screenModal = GenerationModal.Error(downloadState.error.localizedMessageText()))
+                            }
+                        }
+                        DownloadState.Unknown -> Unit
+                    }
+                }
+            }
+        }
     }
 
     fun runBenchmarkFromPrompt() {
@@ -355,6 +446,7 @@ internal class ImageToImageActionHandler(
 
     fun dismissBenchmarkDialog() {
         pendingGenerationState = null
+        pendingEncoderState = null
         updateState { it.copy(screenModal = GenerationModal.None) }
     }
 

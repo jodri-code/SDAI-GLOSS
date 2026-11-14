@@ -22,7 +22,9 @@ import com.shifthackz.aisdv1.domain.usecase.caching.SaveLastResultToCacheUseCase
 import com.shifthackz.aisdv1.domain.usecase.forgemodule.GetForgeModulesUseCase
 import com.shifthackz.aisdv1.domain.usecase.generation.GetRandomImageUseCase
 import com.shifthackz.aisdv1.domain.usecase.generation.ImageToImageUseCase
+import com.shifthackz.aisdv1.domain.usecase.generation.DownloadLocalVaeEncoderUseCase
 import com.shifthackz.aisdv1.domain.usecase.generation.InterruptGenerationUseCase
+import com.shifthackz.aisdv1.domain.usecase.generation.IsLocalImageToImageReadyUseCase
 import com.shifthackz.aisdv1.domain.usecase.generation.ObserveHordeProcessStatusUseCase
 import com.shifthackz.aisdv1.domain.usecase.generation.ObserveLocalDiffusionProcessStatusUseCase
 import com.shifthackz.aisdv1.domain.usecase.generation.SaveGenerationResultUseCase
@@ -60,6 +62,8 @@ class ImageToImageViewModel(
     private val interruptGenerationUseCase: InterruptGenerationUseCase,
     private val observeHordeProcessStatusUseCase: ObserveHordeProcessStatusUseCase,
     private val observeLocalDiffusionProcessStatusUseCase: ObserveLocalDiffusionProcessStatusUseCase,
+    private val isLocalImageToImageReadyUseCase: IsLocalImageToImageReadyUseCase,
+    private val downloadLocalVaeEncoderUseCase: DownloadLocalVaeEncoderUseCase,
     private val preferenceManager: PreferenceManager,
     private val backgroundTaskManager: BackgroundTaskManager,
     private val backgroundWorkObserver: BackgroundWorkObserver,
@@ -106,6 +110,8 @@ class ImageToImageViewModel(
         saveGenerationResultUseCase = saveGenerationResultUseCase,
         saveLastResultToCacheUseCase = saveLastResultToCacheUseCase,
         interruptGenerationUseCase = interruptGenerationUseCase,
+        isLocalImageToImageReadyUseCase = isLocalImageToImageReadyUseCase,
+        downloadLocalVaeEncoderUseCase = downloadLocalVaeEncoderUseCase,
         preferenceManager = preferenceManager,
         backgroundTaskManager = backgroundTaskManager,
         backgroundWorkObserver = backgroundWorkObserver,
@@ -150,6 +156,7 @@ class ImageToImageViewModel(
                 actionHandler.continueAfterBenchmarkWarning(suppressFutureWarnings = false)
             ImageToImageIntent.SuppressBenchmarkWarningAndContinue ->
                 actionHandler.continueAfterBenchmarkWarning(suppressFutureWarnings = true)
+            ImageToImageIntent.ConfirmEncoderDownload -> actionHandler.confirmEncoderDownload()
             ImageToImageIntent.DismissModal -> actionHandler.dismissBenchmarkDialog()
             is ImageToImageIntent.UpdateArliAiModel -> {
                 preferenceManager.arliAiModel = intent.value

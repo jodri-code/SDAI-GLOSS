@@ -116,7 +116,11 @@ import com.shifthackz.aisdv1.domain.usecase.generation.GetRandomImageUseCase
 import com.shifthackz.aisdv1.domain.usecase.generation.GetRandomImageUseCaseImpl
 import com.shifthackz.aisdv1.domain.usecase.generation.ImageToImageUseCase
 import com.shifthackz.aisdv1.domain.usecase.generation.ImageToImageUseCaseImpl
+import com.shifthackz.aisdv1.domain.usecase.generation.DownloadLocalVaeEncoderUseCase
+import com.shifthackz.aisdv1.domain.usecase.generation.DownloadLocalVaeEncoderUseCaseImpl
 import com.shifthackz.aisdv1.domain.usecase.generation.InterruptGenerationUseCase
+import com.shifthackz.aisdv1.domain.usecase.generation.IsLocalImageToImageReadyUseCase
+import com.shifthackz.aisdv1.domain.usecase.generation.IsLocalImageToImageReadyUseCaseImpl
 import com.shifthackz.aisdv1.domain.usecase.generation.InterruptGenerationUseCaseImpl
 import com.shifthackz.aisdv1.domain.usecase.generation.ObserveBonsaiProcessStatusUseCase
 import com.shifthackz.aisdv1.domain.usecase.generation.ObserveBonsaiProcessStatusUseCaseImpl
@@ -390,6 +394,7 @@ val coreDomainModule = module {
             coreMlGenerationRepository = get(),
             falAiGenerationRepository = get(),
             arliAiGenerationRepository = get(),
+            localDiffusionGenerationRepository = get(),
             preferenceManager = get(),
         )
     }
@@ -412,6 +417,12 @@ val coreDomainModule = module {
         ObserveStableDiffusionCppProcessStatusUseCaseImpl(
             stableDiffusionCppGenerationRepository = get(),
         )
+    }
+    factory<IsLocalImageToImageReadyUseCase> {
+        IsLocalImageToImageReadyUseCaseImpl(localDiffusionGenerationRepository = get())
+    }
+    factory<DownloadLocalVaeEncoderUseCase> {
+        DownloadLocalVaeEncoderUseCaseImpl(localDiffusionGenerationRepository = get())
     }
     factory<InterruptGenerationUseCase> {
         InterruptGenerationUseCaseImpl(

@@ -9,6 +9,7 @@ import com.shifthackz.aisdv1.domain.repository.CoreMlGenerationRepository
 import com.shifthackz.aisdv1.domain.repository.FalAiGenerationRepository
 import com.shifthackz.aisdv1.domain.repository.HordeGenerationRepository
 import com.shifthackz.aisdv1.domain.repository.HuggingFaceGenerationRepository
+import com.shifthackz.aisdv1.domain.repository.LocalDiffusionGenerationRepository
 import com.shifthackz.aisdv1.domain.repository.StabilityAiGenerationRepository
 import com.shifthackz.aisdv1.domain.repository.StableDiffusionGenerationRepository
 import com.shifthackz.aisdv1.domain.repository.SwarmUiGenerationRepository
@@ -33,6 +34,7 @@ class ImageToImageUseCaseImplTest {
     private val stubCoreMlGenerationRepository = mockk<CoreMlGenerationRepository>()
     private val stubFalAiGenerationRepository = mockk<FalAiGenerationRepository>()
     private val stubArliAiGenerationRepository = mockk<ArliAiGenerationRepository>()
+    private val stubLocalDiffusionGenerationRepository = mockk<LocalDiffusionGenerationRepository>()
     private val stubPreferenceManager = mockk<PreferenceManager>()
 
     private val useCase = ImageToImageUseCaseImpl(
@@ -44,6 +46,7 @@ class ImageToImageUseCaseImplTest {
         coreMlGenerationRepository = stubCoreMlGenerationRepository,
         falAiGenerationRepository = stubFalAiGenerationRepository,
         arliAiGenerationRepository = stubArliAiGenerationRepository,
+        localDiffusionGenerationRepository = stubLocalDiffusionGenerationRepository,
         preferenceManager = stubPreferenceManager,
     )
 
@@ -56,6 +59,17 @@ class ImageToImageUseCaseImplTest {
 
         assertEquals(listOf(mockAiGenerationResult), actual)
         coVerify(exactly = 1) { stubStableDiffusionGenerationRepository.generateFromImage(any()) }
+    }
+
+    @Test
+    fun `given source is LOCAL_MICROSOFT_ONNX, expected local diffusion generation`() = runTest {
+        every { stubPreferenceManager.source } returns ServerSource.LOCAL_MICROSOFT_ONNX
+        coEvery { stubLocalDiffusionGenerationRepository.generateFromImage(any()) } returns mockAiGenerationResult
+
+        val actual = useCase(mockImageToImagePayload.copy(batchCount = 1))
+
+        assertEquals(listOf(mockAiGenerationResult), actual)
+        coVerify(exactly = 1) { stubLocalDiffusionGenerationRepository.generateFromImage(any()) }
     }
 
     @Test
@@ -191,7 +205,8 @@ class ImageToImageUseCaseImplTest {
 
     @Test
     fun `given unsupported source, expected unsupported error`() = runTest {
-        every { stubPreferenceManager.source } returns ServerSource.LOCAL_MICROSOFT_ONNX
+        // LOCAL_MICROSOFT_ONNX is supported now; Google MediaPipe still has no Img2Img.
+        every { stubPreferenceManager.source } returns ServerSource.LOCAL_GOOGLE_MEDIA_PIPE
 
         val actual = runCatching { useCase(mockImageToImagePayload.copy(batchCount = 1)) }
 

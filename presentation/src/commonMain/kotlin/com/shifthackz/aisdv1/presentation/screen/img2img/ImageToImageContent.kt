@@ -418,5 +418,6 @@ fun ImageToImageContent(
         onSkipBenchmarkRequest = { processIntent(ImageToImageIntent.SkipBenchmarkPrompt) },
         onBenchmarkContinueRequest = { processIntent(ImageToImageIntent.ContinueAfterBenchmarkWarning) },
         onBenchmarkDoNotAskRequest = { processIntent(ImageToImageIntent.SuppressBenchmarkWarningAndContinue) },
+        onEncoderDownloadRequest = { processIntent(ImageToImageIntent.ConfirmEncoderDownload) },
     )
 }

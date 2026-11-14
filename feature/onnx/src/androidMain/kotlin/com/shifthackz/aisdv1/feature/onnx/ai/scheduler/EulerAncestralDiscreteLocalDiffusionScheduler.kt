@@ -140,6 +140,30 @@ internal class EulerAncestralDiscreteLocalDiffusionScheduler(
         return result
     }
 
+    override fun getStartStep(strength: Float): Int {
+        check(numInferenceSteps > 0) { "setTimeSteps() must be called before getStartStep()." }
+        val initSteps = (numInferenceSteps * strength.coerceIn(0f, 1f)).toInt()
+            .coerceIn(1, numInferenceSteps)
+        return numInferenceSteps - initSteps
+    }
+
+    override fun addNoise(
+        original: Array3D<FloatArray>,
+        noise: Array3D<FloatArray>,
+        stepIndex: Int,
+    ): Array3D<FloatArray> {
+        val sigma = sigmas[stepIndex]
+        return Array(original.size) { b ->
+            Array(original[b].size) { c ->
+                Array(original[b][c].size) { y ->
+                    FloatArray(original[b][c][y].size) { x ->
+                        original[b][c][y][x] + noise[b][c][y][x] * sigma
+                    }
+                }
+            }
+        }
+    }
+
     override fun scaleModelInput(sample: LocalDiffusionTensor<*>, stepIndex: Int): LocalDiffusionTensor<*> {
         val sampleArray: FloatArray = sample.tensor.floatBuffer.array()
         val sigma = sigmas[stepIndex]

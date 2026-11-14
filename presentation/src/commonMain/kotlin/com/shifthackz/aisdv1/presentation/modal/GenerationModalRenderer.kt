@@ -56,6 +56,7 @@ fun GenerationModalRenderer(
     onSkipBenchmarkRequest: () -> Unit,
     onBenchmarkContinueRequest: () -> Unit,
     onBenchmarkDoNotAskRequest: () -> Unit,
+    onEncoderDownloadRequest: () -> Unit = {},
 ) {
     when (screenModal) {
         GenerationModal.None -> Unit
@@ -80,6 +81,15 @@ fun GenerationModalRenderer(
                     ProgressDialogCancelButton(onClick = onCancelGeneration)
                 }
             },
+        )
+
+        is GenerationModal.EncoderDownload -> DecisionInteractiveDialog(
+            title = Localization.string("encoder_download_title").asUiText(),
+            text = Localization.string("encoder_download_text", screenModal.sizeLabel).asUiText(),
+            confirmActionText = Localization.string("encoder_download_action").asUiText(),
+            dismissActionText = Localization.string("cancel").asUiText(),
+            onConfirmAction = onEncoderDownloadRequest,
+            onDismissRequest = onDismissRequest,
         )
 
         is GenerationModal.Error -> ErrorDialog(

@@ -2,6 +2,7 @@ package com.shifthackz.aisdv1.domain.repository
 
 import com.shifthackz.aisdv1.domain.entity.LocalDiffusionStatus
 import com.shifthackz.aisdv1.domain.entity.ImageToImagePayload
+import com.shifthackz.aisdv1.domain.entity.DownloadState
 import com.shifthackz.aisdv1.domain.entity.TextToImagePayload
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
@@ -30,6 +31,17 @@ object NoOpLocalDiffusionGenerationRepository : LocalDiffusionGenerationReposito
      */
     override suspend fun generateFromText(payload: TextToImagePayload) =
         error("Local Diffusion generation is unavailable on this device.")
+
+    override suspend fun generateFromImage(payload: ImageToImagePayload) =
+        error("Local Diffusion generation is unavailable on this device.")
+
+    override val vaeEncoderSizeLabel: String = ""
+
+    override suspend fun isImageToImageReady(): Boolean = false
+
+    override fun downloadVaeEncoder(): Flow<DownloadState> = flowOf(
+        DownloadState.Error(UnsupportedOperationException("Local Diffusion is unavailable on this device.")),
+    )
 
     /**
      * Performs the SDAI side effect handled by `interruptGeneration`.

@@ -21,7 +21,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,7 +36,9 @@ import com.shifthackz.aisdv1.domain.entity.AiGenerationResult
 import com.shifthackz.aisdv1.presentation.platform.rememberExternalUrlLauncher
 import com.shifthackz.aisdv1.presentation.screen.txt2img.decodeBase64ImageBitmap
 import com.shifthackz.aisdv1.presentation.widget.input.GenerationInputForm
+import com.shifthackz.aisdv1.presentation.theme.sliderColors
 import com.shifthackz.aisdv1.presentation.widget.input.GenerationInputFormEvent
+import com.shifthackz.aisdv1.presentation.widget.input.SliderTextInputField
 
 
 /**
@@ -146,26 +147,24 @@ internal fun DenoisingStrengthSlider(
     strings: ImageToImageStrings,
     processIntent: (ImageToImageIntent) -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = Localization.string(
-                    "hint_denoising_strength",
-                    state.denoisingStrength.roundToString(),
-                ),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Slider(
+    // Same look as the CFG scale slider: label, slider, numeric field with step arrows.
+    Column {
+        Text(
+            modifier = Modifier.padding(top = 8.dp),
+            text = Localization.string(
+                "hint_denoising_strength",
+                state.denoisingStrength.roundToString(),
+            ),
+        )
+        SliderTextInputField(
             value = state.denoisingStrength,
+            valueRange = MIN_DENOISING_STRENGTH..MAX_DENOISING_STRENGTH,
+            valueDiff = 0.05f,
+            steps = 19,
+            sliderColors = sliderColors,
             onValueChange = {
                 processIntent(ImageToImageIntent.UpdateDenoisingStrength(it))
             },
-            valueRange = 0f..1f,
         )
     }
 }

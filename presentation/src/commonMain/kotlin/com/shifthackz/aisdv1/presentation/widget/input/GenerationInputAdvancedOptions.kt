@@ -366,6 +366,7 @@ internal fun GenerationInputAdvancedOptions(
                     ServerSource.ARLI_AI,
                     ServerSource.HORDE,
                     ServerSource.LOCAL_APPLE_CORE_ML,
+                    ServerSource.LOCAL_MICROSOFT_ONNX,
                     ServerSource.LOCAL_APPLE_BONSAI -> afterSlidersSection()
 
                     else -> Unit
