@@ -36,7 +36,10 @@ internal class AndroidDownloadableModelFileStore(
 
             else -> when (model.type) {
                 LocalAiModel.Type.ONNX -> {
-                    val files = getLocalModelFiles(model.id).filter { it.isDirectory }
+                    // "vae_encoder" is an optional extra folder (local Img2Img); it must not
+                    // change whether the four required folders make the model "downloaded".
+                    val files = getLocalModelFiles(model.id)
+                        .filter { it.isDirectory && it.name != ONNX_OPTIONAL_VAE_ENCODER_DIRECTORY }
                     files.size == 4
                 }
 
@@ -136,6 +139,7 @@ internal class AndroidDownloadableModelFileStore(
     }
 }
 
+private const val ONNX_OPTIONAL_VAE_ENCODER_DIRECTORY = "vae_encoder"
 private const val TEXT_ENCODER_MLX_DIRECTORY = "text_encoder-mlx-4bit"
 private const val TEXT_ENCODER_LEGACY_DIRECTORY = "text_encoder"
 private const val TRANSFORMER_DIRECTORY = "transformer-packed-mflux"

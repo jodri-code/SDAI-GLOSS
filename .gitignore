@@ -16,6 +16,7 @@
 bin/
 gen/
 out/
+/vae_encoder/
 
 # Gradle files
 .gradle/

@@ -129,6 +129,10 @@ sealed interface GenerationModal {
     @Immutable
     data class Error(val error: UiText) : GenerationModal
 
+    /** Asks to download the one-time image encoder that local Img2Img needs. */
+    @Immutable
+    data class EncoderDownload(val sizeLabel: String) : GenerationModal
+
     /**
      * Defines the `Image` contract for the SDAI presentation layer.
      *

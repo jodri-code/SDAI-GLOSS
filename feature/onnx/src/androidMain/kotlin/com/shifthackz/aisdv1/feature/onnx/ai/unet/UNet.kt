@@ -24,6 +24,7 @@ import com.shifthackz.aisdv1.feature.onnx.ai.extensions.getSizes
 import com.shifthackz.aisdv1.feature.onnx.ai.extensions.multipleTensorsByFloat
 import com.shifthackz.aisdv1.feature.onnx.ai.extensions.splitTensor
 import com.shifthackz.aisdv1.feature.onnx.ai.scheduler.EulerAncestralDiscreteLocalDiffusionScheduler
+import com.shifthackz.aisdv1.feature.onnx.ai.scheduler.LocalDiffusionScheduler
 import com.shifthackz.aisdv1.feature.onnx.ai.vae.VaeDecoder
 import com.shifthackz.aisdv1.feature.onnx.entity.Array3D
 import com.shifthackz.aisdv1.feature.onnx.entity.LocalDiffusionFlag
@@ -181,8 +182,45 @@ internal class UNet(
         seed: Long,
         initNoiseSigma: Float
     ): LocalDiffusionTensor<*> {
+        val latentsArray = gaussianLatents(batchSize, height, width, seed) { standardNormalRand ->
+            (standardNormalRand * initNoiseSigma).toFloat()
+        }
+        return latentTensor(latentsArray, batchSize, height, width)
+    }
+
+    /**
+     * Img2Img starting point: the encoded input image plus seeded noise scaled to the sigma of
+     * [startStep]. The noise uses the same generator as txt2img, so a given seed behaves alike.
+     */
+    private fun generateImageToImageLatentSample(
+        initLatents: Array3D<FloatArray>,
+        height: Int,
+        width: Int,
+        seed: Long,
+        scheduler: LocalDiffusionScheduler,
+        startStep: Int,
+    ): LocalDiffusionTensor<*> {
+        require(
+            initLatents.isNotEmpty() &&
+                initLatents[0].size == LATENT_CHANNELS &&
+                initLatents[0][0].size == height / 8 &&
+                initLatents[0][0][0].size == width / 8
+        ) { "Encoded image does not match the requested ${width}x${height} size." }
+        val batchSize = initLatents.size
+        val noise = gaussianLatents(batchSize, height, width, seed) { it.toFloat() }
+        val noisy = scheduler.addNoise(initLatents, noise, startStep)
+        return latentTensor(noisy, batchSize, height, width)
+    }
+
+    private inline fun gaussianLatents(
+        batchSize: Int,
+        height: Int,
+        width: Int,
+        seed: Long,
+        transform: (Double) -> Float,
+    ): Array3D<FloatArray> {
         val random = Random(seed)
-        val channels = 4
+        val channels = LATENT_CHANNELS
         val latentsArray = Array(batchSize) {
             Array(channels) {
                 Array(height / 8) {
@@ -199,22 +237,29 @@ internal class UNet(
                         val radius = sqrt(-2.0f * ln(u1))
                         val theta = 2.0 * Math.PI * u2
                         val standardNormalRand = radius * cos(theta)
-                        latentsArray[i][j][k][l] = (standardNormalRand * initNoiseSigma).toFloat()
+                        latentsArray[i][j][k][l] = transform(standardNormalRand)
                     }
                 }
             }
         }
-        return LocalDiffusionTensor(
-            OnnxTensor.createTensor(ortEnvironmentProvider.get(), latentsArray),
-            latentsArray,
-            longArrayOf(
-                batchSize.toLong(),
-                channels.toLong(),
-                (height / 8).toLong(),
-                (width / 8).toLong()
-            )
-        )
+        return latentsArray
     }
+
+    private fun latentTensor(
+        latentsArray: Array3D<FloatArray>,
+        batchSize: Int,
+        height: Int,
+        width: Int,
+    ): LocalDiffusionTensor<*> = LocalDiffusionTensor(
+        OnnxTensor.createTensor(ortEnvironmentProvider.get(), latentsArray),
+        latentsArray,
+        longArrayOf(
+            batchSize.toLong(),
+            LATENT_CHANNELS.toLong(),
+            (height / 8).toLong(),
+            (width / 8).toLong()
+        )
+    )
 
     /**
      * Executes the `performGuidance` step in the SDAI ONNX local diffusion feature layer.
@@ -254,6 +299,8 @@ internal class UNet(
      * @param batchSize batch size value consumed by the API.
      * @param width width value consumed by the API.
      * @param height height value consumed by the API.
+     * @param initLatents encoded input image for Img2Img (already scaled), or null for txt2img.
+     * @param strength Img2Img denoising strength 0..1, ignored when [initLatents] is null.
      * @author Dmitriy Moroz
      */
     fun inference(
@@ -264,6 +311,8 @@ internal class UNet(
         batchSize: Int,
         width: Int,
         height: Int,
+        initLatents: Array3D<FloatArray>? = null,
+        strength: Float = 1f,
     ) {
         debugLog("{$TAG} {uNet} {inference} Trying to start inference:")
         debugLog("{$TAG} {uNet} {inference} - seed: $seedNum")
@@ -278,18 +327,34 @@ internal class UNet(
         debugLog("{$TAG} {uNet} {inference} Initialized scheduler: $localDiffusionScheduler")
         val timeSteps: IntArray = localDiffusionScheduler.setTimeSteps(numInferenceSteps)
         val seed = if (seedNum <= 0) random.nextLong() else seedNum
-        var latents: LocalDiffusionTensor<*> = generateLatentSample(
-            batchSize,
-            height,
-            width,
-            seed,
-            localDiffusionScheduler.initNoiseSigma.toFloat()
-        )
+        // Img2Img skips the noisiest steps. Step indices stay ABSOLUTE (the scheduler indexes its
+        // sigma table with them); only the progress callback is relative to startStep.
+        val startStep = if (initLatents != null) localDiffusionScheduler.getStartStep(strength) else 0
+        val totalSteps = timeSteps.size - startStep
+        debugLog("{$TAG} {uNet} {inference} - startStep: $startStep (strength: $strength)")
+        var latents: LocalDiffusionTensor<*> = if (initLatents != null) {
+            generateImageToImageLatentSample(
+                initLatents,
+                height,
+                width,
+                seed,
+                localDiffusionScheduler,
+                startStep,
+            )
+        } else {
+            generateLatentSample(
+                batchSize,
+                height,
+                width,
+                seed,
+                localDiffusionScheduler.initNoiseSigma.toFloat()
+            )
+        }
         debugLog("{$TAG} {uNet} {inference} Got latents: ${latents.hashCode()}")
         val shape = longArrayOf(2, 4, (height / 8).toLong(), (width / 8).toLong())
         debugLog("{$TAG} {uNet} {inference} Got shape: $shape")
-        debugLog("{$TAG} {uNet} {inference} Starting steps processing! Total : ${timeSteps.size}")
-        for (i in timeSteps.indices) {
+        debugLog("{$TAG} {uNet} {inference} Starting steps processing! Total : $totalSteps")
+        for (i in startStep until timeSteps.size) {
             var latentModelInput: LocalDiffusionTensor<*> = duplicate(
                 latents.tensor.floatBuffer.array(),
                 shape,
@@ -298,7 +363,7 @@ internal class UNet(
             debugLog("{$TAG} {uNet} {inference} {Step_$i} ------------------")
             debugLog("{$TAG} {uNet} {inference} {Step_$i} Latent model input: $latentModelInput")
             debugLog("{$TAG} {uNet} {inference} {Step_$i} Notifying callback about step.")
-            callback?.onStep(timeSteps.size, i)
+            callback?.onStep(totalSteps, i - startStep)
             val input = createUNetModelInput(
                 textEmbeddings,
                 latentModelInput.tensor,
@@ -345,7 +410,7 @@ internal class UNet(
         }
         callback?.also { clb ->
             debugLog("{$TAG} {uNet} {inference} Finalization / Flushing image...")
-            callback?.onStep(timeSteps.size, timeSteps.size)
+            callback?.onStep(totalSteps, totalSteps)
             val bitmap = decode(latents)
             debugLog("{$TAG} {uNet} {inference} Finalization / Decoded bitmap: ${bitmap.hashCode()}")
             clb.onBuildImage(0, bitmap)
@@ -403,6 +468,10 @@ internal class UNet(
     fun setCallback(callback: Callback?) {
         debugLog("{$TAG} {uNet} Setting new result callback ${callback.hashCode()}")
         this.callback = callback
+    }
+
+    private companion object {
+        const val LATENT_CHANNELS = 4
     }
 
     /**

@@ -72,6 +72,33 @@ class AndroidDownloadableModelFileStoreTest {
     }
 
     @Test
+    fun `given onnx model directory contains the four required folders, is downloaded returns true`() {
+        val model = model(id = "onnx-model", type = LocalAiModel.Type.ONNX)
+        File(temporaryFolder.root, model.id).createOnnxLayout()
+
+        assertTrue(fileStore.isDownloaded(model))
+    }
+
+    @Test
+    fun `given onnx model directory also contains optional vae encoder folder, is downloaded returns true`() {
+        val model = model(id = "onnx-model", type = LocalAiModel.Type.ONNX)
+        File(temporaryFolder.root, model.id).createOnnxLayout()
+        File(temporaryFolder.root, "${model.id}/vae_encoder").mkdirs()
+
+        assertTrue(fileStore.isDownloaded(model))
+    }
+
+    @Test
+    fun `given onnx model directory misses a required folder but has vae encoder folder, is downloaded returns false`() {
+        val model = model(id = "onnx-model", type = LocalAiModel.Type.ONNX)
+        File(temporaryFolder.root, model.id).createOnnxLayout()
+        File(temporaryFolder.root, "${model.id}/unet").deleteRecursively()
+        File(temporaryFolder.root, "${model.id}/vae_encoder").mkdirs()
+
+        assertFalse(fileStore.isDownloaded(model))
+    }
+
+    @Test
     fun `given bonsai model directory contains complete layout, is downloaded returns true`() {
         val model = model(id = "bonsai-model", type = LocalAiModel.Type.Bonsai)
         File(temporaryFolder.root, model.id)
@@ -92,6 +119,12 @@ class AndroidDownloadableModelFileStoreTest {
         val actual = fileStore.isDownloaded(model)
 
         assertFalse(actual)
+    }
+}
+
+private fun File.createOnnxLayout() {
+    listOf("text_encoder", "tokenizer", "unet", "vae_decoder").forEach { name ->
+        File(this, name).mkdirs()
     }
 }
 

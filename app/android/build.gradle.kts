@@ -58,6 +58,12 @@ android {
         }
     }
 
+    buildTypes {
+        getByName("debug") {
+            applicationIdSuffix = ".debug"
+        }
+    }
+
     val signingPropertiesFile = rootProject.file("app/keystore/signing.properties")
     if (signingPropertiesFile.exists()) {
         val props = Properties()

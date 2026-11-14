@@ -98,6 +98,11 @@ sealed interface ImageToImageIntent : MviIntent {
      * @author Dmitriy Moroz
      */
     data object SuppressBenchmarkWarningAndContinue : ImageToImageIntent
+
+    /**
+     * Confirms the one-time download of the Img2Img image encoder.
+     */
+    data object ConfirmEncoderDownload : ImageToImageIntent
     /**
      * Provides the `DismissModal` singleton used by the SDAI presentation layer.
      *

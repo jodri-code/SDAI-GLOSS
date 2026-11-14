@@ -104,10 +104,12 @@ data class ImageToImageState(
             mode == ServerSource.STABILITY_AI ||
             mode == ServerSource.LOCAL_APPLE_CORE_ML ||
             mode == ServerSource.FAL_AI ||
-            mode == ServerSource.ARLI_AI
+            mode == ServerSource.ARLI_AI ||
+            mode == ServerSource.LOCAL_MICROSOFT_ONNX
 
     val sourceSupportsInPaint: Boolean
-        get() = mode != ServerSource.LOCAL_APPLE_CORE_ML
+        get() = mode != ServerSource.LOCAL_APPLE_CORE_ML &&
+            mode != ServerSource.LOCAL_MICROSOFT_ONNX // local ONNX Img2Img has no mask support
 
     val hasValidationErrors: Boolean
         get() = promptValidationError != null ||

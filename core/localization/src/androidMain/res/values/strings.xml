@@ -642,4 +642,8 @@
     <string name="benchmark_issue_sdxl_tiny_experimental_only">SDXL may only work here as a tiny experimental CPU run, so it is not recommended.</string>
     <string name="benchmark_issue_sdxl_backend_not_validated">Vulkan API was found, but the SDXL Vulkan backend was not validated by a safe benchmark.</string>
     <string name="benchmark_issue_accelerator_api_not_available">The required acceleration API was not found.</string>
+    <string name="encoder_download_title">Download image encoder</string>
+    <string name="encoder_download_text">Local image-to-image needs a one-time %1$s download. It works with all of your local models.</string>
+    <string name="encoder_download_action">Download</string>
+    <string name="encoder_download_progress">Downloading image encoder</string>
 </resources>

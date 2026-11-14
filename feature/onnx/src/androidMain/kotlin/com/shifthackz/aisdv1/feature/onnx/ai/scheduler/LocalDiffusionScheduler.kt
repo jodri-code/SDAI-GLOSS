@@ -1,5 +1,6 @@
 package com.shifthackz.aisdv1.feature.onnx.ai.scheduler
 
+import com.shifthackz.aisdv1.feature.onnx.entity.Array3D
 import com.shifthackz.aisdv1.feature.onnx.entity.LocalDiffusionTensor
 
 /**
@@ -22,6 +23,23 @@ internal interface LocalDiffusionScheduler {
      * @author Dmitriy Moroz
      */
     fun setTimeSteps(numInferenceSteps: Int): IntArray
+
+    /**
+     * Index of the first denoising step to run for Img2Img at the given [strength] (0..1).
+     * Strength 1 runs every step (start index 0); smaller values skip the noisiest steps.
+     * Always runs at least one step. Must be called after [setTimeSteps].
+     */
+    fun getStartStep(strength: Float): Int
+
+    /**
+     * Img2Img forward noising for sigma-space schedulers: `original + noise * sigma[stepIndex]`.
+     * [stepIndex] is the absolute index returned by [getStartStep]. Must be called after [setTimeSteps].
+     */
+    fun addNoise(
+        original: Array3D<FloatArray>,
+        noise: Array3D<FloatArray>,
+        stepIndex: Int,
+    ): Array3D<FloatArray>
     /**
      * Executes the `scaleModelInput` step in the SDAI ONNX local diffusion feature layer.
      *

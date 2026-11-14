@@ -30,6 +30,7 @@ internal object LocalDiffusionContract {
      * @author Dmitriy Moroz
      */
     const val VAE_MODEL = "vae_decoder/model.ort"
+    const val VAE_ENCODER_MODEL = "vae_encoder/model.ort"
     /**
      * Exposes the `TOKENIZER_MODEL` value used by the SDAI ONNX local diffusion feature layer.
      *
@@ -48,6 +49,11 @@ internal object LocalDiffusionContract {
      * @author Dmitriy Moroz
      */
     const val TOKENIZER_MERGES = "tokenizer/merges.txt"
+    //endregion
+
+    //region VAE
+    /** Latent scaling factor of the SD 1.x / 2.x VAE. The decoder applies its inverse. */
+    const val VAE_SCALING_FACTOR = 0.18215f
     //endregion
 
     //region BETA SCHEDULERS

@@ -62,6 +62,7 @@ enum class ServerSource(
         featureTags = setOf(
             FeatureTag.Offline,
             FeatureTag.Txt2Img,
+            FeatureTag.Img2Img,
             FeatureTag.MultipleModels,
         ),
         allowedPlatforms = setOf(Platform.ANDROID),

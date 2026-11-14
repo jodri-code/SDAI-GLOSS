@@ -120,6 +120,7 @@ internal class ImageToImageIntentProcessor(
             ImageToImageIntent.SkipBenchmarkPrompt -> Unit
             ImageToImageIntent.ContinueAfterBenchmarkWarning -> Unit
             ImageToImageIntent.SuppressBenchmarkWarningAndContinue -> Unit
+            ImageToImageIntent.ConfirmEncoderDownload -> Unit
             ImageToImageIntent.DismissModal -> updateState { it.copy(screenModal = GenerationModal.None) }
             ImageToImageIntent.CancelGeneration -> cancelGeneration()
             ImageToImageIntent.UndoInPaintStroke -> updateState { state ->

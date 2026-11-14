@@ -278,6 +278,8 @@ internal fun Module.registerPresentationViewModelBindings() {
             saveGenerationResultUseCase = get(),
             saveLastResultToCacheUseCase = get(),
             interruptGenerationUseCase = get(),
+            isLocalImageToImageReadyUseCase = get(),
+            downloadLocalVaeEncoderUseCase = get(),
             observeHordeProcessStatusUseCase = get(),
             observeLocalDiffusionProcessStatusUseCase = get(),
             preferenceManager = get(),
