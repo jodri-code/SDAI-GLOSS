@@ -15,6 +15,7 @@ internal object VaeEncoderDistribution {
      */
     val SOURCES: List<String> = listOf(
         // The file name in the URL does not matter; the app always saves it as model.ort.
+        "https://huggingface.co/jodri-code/onnx-sd1.5-universal-encoder/resolve/main/model.ort",
         "https://cdn.sooox.cc/DyekWnb8Pl3N.ort",
         // Add mirrors here; they are tried in order if the one above fails or does not match SHA256.
     )
